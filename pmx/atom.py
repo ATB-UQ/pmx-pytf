@@ -48,10 +48,11 @@ Basic Usage:
       
 
 """
-import _pmx as _p
+import pmx._pmx as _p
 from numpy import *
-import copy, library
-from library import pdb_format, pdb_format2
+import copy
+from .library import pdb_format, pdb_format2
+from . import library
 
 class Atom:
     """ class for storage of atom properties and methods"""
@@ -99,19 +100,18 @@ class Atom:
         self.ptype = ''
         self.long_name = ''
         self.unity='A'
-        for key, val in kwargs.items():
+        for key, val in list(kwargs.items()):
             setattr(self,key,val)
         if line is not None:
             self.readPDBString(line)
         if mol2line is not None:
             self.read_mol2_line(mol2line)
             
-    def readPDBString(self,line,origID=0):
+    def readPDBString(self,line):
         """PDB String to Atom"""
 
         self.race=line[0:6]
         self.id=int(line[7:11])
-        self.orig_id = origID
         self.name=line[12:16].strip()
         self.altloc=line[16]
         self.resname=line[17:21].strip()
@@ -208,7 +208,7 @@ class Atom:
     def __str__(self):
         """ prints the atom in PDB format """
         if self.unity=='nm':
-            coords = map(lambda x: x*10, self.x)
+            coords = [x*10 for x in self.x]
         else:
             coords = self.x
         if len(self.resname)<4:
@@ -262,8 +262,8 @@ class Atom:
         and order"""
         # check for aliases first
         ali = library._aliases
-        if ali.has_key(self.resname) and \
-           ali[self.resname].has_key(self.name):
+        if self.resname in ali and \
+           self.name in ali[self.resname]:
             name = ali[self.resname][self.name]
         else:
             name = self.name.strip()
@@ -340,7 +340,7 @@ class Atom:
         if self.symbol == '':
             self.get_symbol()
         if self.resname not in library._protein_residues:
-            print 'Sorry, implemented for proteins only'
+            print('Sorry, implemented for proteins only')
             return
         
         el = self.symbol
@@ -395,8 +395,8 @@ class Atom:
             self.unity = 'A'
             self.symbol = self.atype.split('.')[0]
         else:
-            print 'Error: Cannot convert line to atom'
-            print line
+            print('Error: Cannot convert line to atom')
+            print(line)
             sys.exit(1)
         return self
     

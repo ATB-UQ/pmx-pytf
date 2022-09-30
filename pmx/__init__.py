@@ -37,16 +37,16 @@ Quite fancy is the interface to the GROMACS command line parsing
 functionality. Take a look at the example scripts.
 
 """
-__version__ = '1.1.0dev'
+__version__ = '1.0.0'
 
 PMX_VERSION = __version__
 
 import os
-from atom import *
-from molecule import *
-from chain import *
-from model import *
-from options import *
+from .atom import *
+from .molecule import *
+from .chain import *
+from .model import *
+from .options import *
 
 
 XX       =  0             

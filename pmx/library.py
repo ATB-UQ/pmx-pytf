@@ -31,7 +31,7 @@ __doc__="""
 Library for useful and less useful things needed by the pmx packages.
 """
 
-import sys, os, cPickle
+import sys, os, pickle
 
 #pdb_format="%6s%5d %-4s%1s%3s%2s%4d %11.3f %7.3f %7.3f %5.2f %5.2f\n"
 
@@ -51,11 +51,11 @@ def pmx_data_file( filename ):
         pth = PMX_DATA
         data_file = os.path.join(pth,filename)
     if not os.path.isfile(data_file):
-        print >>sys.stderr, "pmx_ERROR> data file \"%s\" not found " % data_file
+        print("pmx_ERROR> data file \"%s\" not found " % data_file, file=sys.stderr)
         sys.exit(1)
-    print >>sys.stderr,"pmx__> Loading data file \"%s\"" % data_file
+    print("pmx__> Loading data file \"%s\"" % data_file, file=sys.stderr)
     if data_file.split('.')[-1] == 'pkl':
-        return cPickle.load(open(data_file))
+        return pickle.load(open(data_file))
     else: return data_file
         
 
@@ -105,8 +105,6 @@ _aacids_ext_charmm = {
     'F':'PHE',
     'P':'PRO',
     'S':'SER',
-    'SP1':'SP1', # phosphoserine
-    'SP2':'SP2', # phosphoserine
     'T':'THR',
     'W':'TRP',
     'Y':'TYR',
@@ -182,13 +180,10 @@ _protein_residues = (
     'NLYP','NPRO','NCYN','NCYX','NMET','CALA','CGLY','CSER','CTHR',
     'CLEU','CILE','CVAL','CASN','CGLN','CARG','CHID','CHIE','CHIP',
     'CTRP','CPHE','CTYR','CGLU','CASP','CLYP','CPRO','CCYN','CCYX',
-    'CMET','SEP','HISH','HIS1','HISD','HISE','GLUH',
-    'SP1','SP2', # phosphoserines in charmm36
+    'CMET','SEP','HISH','HIS1','HISE','GLUH'
     )
 
 _one_letter = {
-    'SP1':'SP1', # phosphoserine in charmm36
-    'SP2':'SP2', # phosphoserine in charmm36
     'ALA':'A',
     'ARG':'R',
     'ASN':'N',
@@ -1781,10 +1776,6 @@ _aliases = {
                 'HB1':'1HB',
                 'HB2':'2HB',
         },
-        'HISD': {
-                'HB1':'1HB',
-                'HB2':'2HB',
-        },
 	'HSE': {
 		'HB1':'1HB',
 		'HB2':'2HB',
@@ -2126,16 +2117,6 @@ _aliases = {
 		'HB2':'2HB',
 		'HG1':'1HG',
 	},
-        # phosphoserine in charmm36
-	'SP1': {
-		'HB1':'1HB',
-		'HB2':'2HB',
-	},
-        # phosphoserine in charmm36
-	'SP2': {
-		'HB1':'1HB',
-		'HB2':'2HB',
-	},
 	'NSER': {
                  'H1':'1H',
                  'H2':'2H',
@@ -2221,102 +2202,6 @@ _aliases = {
                 'HG21':'1HG2',
                 'HG22':'2HG2',
                 'HG23':'3HG2',
-	},
-	'DA': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DA5': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DA3': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DAN': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DT': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DT5': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DT3': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DTN': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DG': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DG5': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DG3': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DGN': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DC': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DC5': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DC3': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
-	},
-	'DCN': {
-                '1H5\'':'H5\'1',
-                '2H5\'':'H5\'2',
-                '1H2\'':'H2\'1',
-                '2H2\'':'H2\'2',
 	},
 }
 
@@ -4647,67 +4532,6 @@ _aa_dihedrals = {
 		['HB2', 'CB', 'OG', 'HG', 1, -1] ,
 		['C', 'CA', 'CB', 'OG', 1, -1] ,
 	     ),
-        # phosphoserine in charmm36
-	'SP1' : (
-		['N', 'CA', 'CB', 'HB1', 1, -1] ,
-		['N', 'CA', 'CB', 'HB2', 1, -1] ,
-		['N', 'CA', 'CB', 'OG', 1, 1] ,
-		['N', 'CA', 'C', 'O', 1, 0] ,
-		['H', 'N', 'CA', 'HA', 1, -1] ,
-		['H', 'N', 'CA', 'CB', 1, -1] ,
-		['C', 'CA', 'N', 'H', 1, -1] ,
-		['CA', 'CB', 'OG', 'PD', 1, 2] ,
-		['HA', 'CA', 'CB', 'HB1', 1, -1] ,
-		['HA', 'CA', 'CB', 'HB2', 1, -1] ,
-		['HA', 'CA', 'CB', 'OG', 1, -1] ,
-		['HA', 'CA', 'C', 'O', 1, -1] ,
-		['CB', 'CA', 'C', 'O', 1, -1] ,
-		['C', 'CA', 'CB', 'HB1', 1, -1] ,
-		['HB1', 'CB', 'OG', 'PD', 1, -1] ,
-		['C', 'CA', 'CB', 'HB2', 1, -1] ,
-		['HB2', 'CB', 'OG', 'PD', 1, -1] ,
-		['C', 'CA', 'CB', 'OG', 1, -1] ,
-		['CB', 'OG', 'PD', 'OE1', 1, 3] ,
-		['CB', 'OG', 'PD', 'OE2', 1, -1] ,
-		['CB', 'OG', 'PD', 'OE', 1, -1] ,
-		['C', 'CA', 'CB', 'HB1', 1, -1] ,
-		['HB1', 'CB', 'OG', 'PD', 1, -1] ,
-		['C', 'CA', 'CB', 'HB2', 1, -1] ,
-		['HB2', 'CB', 'OG', 'PD', 1, -1] ,
-		['C', 'CA', 'CB', 'CG', 1, -1] ,
-		['OG', 'PD', 'OE', 'HE', 1, 4] ,
-		['O1E', 'PD', 'OE', 'HE', 1, -1] ,
-		['O2E', 'PD', 'OE', 'HE', 1, -1] ,
-	     ),
-        # phosphoserine in charmm36
-	'SP2' : (
-		['N', 'CA', 'CB', 'HB1', 1, -1] ,
-		['N', 'CA', 'CB', 'HB2', 1, -1] ,
-		['N', 'CA', 'CB', 'OG', 1, 1] ,
-		['N', 'CA', 'C', 'O', 1, 0] ,
-		['H', 'N', 'CA', 'HA', 1, -1] ,
-		['H', 'N', 'CA', 'CB', 1, -1] ,
-		['C', 'CA', 'N', 'H', 1, -1] ,
-		['CA', 'CB', 'OG', 'PD', 1, 2] ,
-		['HA', 'CA', 'CB', 'HB1', 1, -1] ,
-		['HA', 'CA', 'CB', 'HB2', 1, -1] ,
-		['HA', 'CA', 'CB', 'OG', 1, -1] ,
-		['HA', 'CA', 'C', 'O', 1, -1] ,
-		['CB', 'CA', 'C', 'O', 1, -1] ,
-		['C', 'CA', 'CB', 'HB1', 1, -1] ,
-		['HB1', 'CB', 'OG', 'PD', 1, -1] ,
-		['C', 'CA', 'CB', 'HB2', 1, -1] ,
-		['HB2', 'CB', 'OG', 'PD', 1, -1] ,
-		['C', 'CA', 'CB', 'OG', 1, -1] ,
-		['CB', 'OG', 'PD', 'OE1', 1, 3] ,
-		['CB', 'OG', 'PD', 'OE2', 1, -1] ,
-		['CB', 'OG', 'PD', 'OE', 1, -1] ,
-		['C', 'CA', 'CB', 'HB1', 1, -1] ,
-		['HB1', 'CB', 'OG', 'PD', 1, -1] ,
-		['C', 'CA', 'CB', 'HB2', 1, -1] ,
-		['HB2', 'CB', 'OG', 'PD', 1, -1] ,
-		['C', 'CA', 'CB', 'CG', 1, -1] ,
-	     ),
 	'SEP' : (
 		['N', 'CA', 'CB', 'HB1', 1, -1] ,
 		['N', 'CA', 'CB', 'HB2', 1, -1] ,
@@ -4730,6 +4554,7 @@ _aa_dihedrals = {
 		['CB', 'OG', 'P', 'O1P', 1, 3] ,
 		['CB', 'OG', 'P', 'O2P', 1, -1] ,
 		['CB', 'OG', 'P', 'O3P', 1, -1] ,
+                
 	     ),
 	'THR' : (
 		['N', 'CA', 'CB', 'HB', 1, -1] ,
@@ -5087,19 +4912,6 @@ _mol2_types = {
     'C':['C.2',0],
     'O':['O.2',0],
     },
-    'HISD':
-    {
-    'N':['N.am',0],
-    'CA':['C.3',0],
-    'CB':['C.3',0],
-    'CG':['C.2',0],
-    'ND1':['N.2',0],
-    'CE1':['C.2',0],
-    'NE2':['N.pl3',0],
-    'CD2':['C.2',0],
-    'C':['C.2',0],
-    'O':['O.2',0],
-    },
     'HISE':
     {
     'N':['N.am',0],
@@ -5210,32 +5022,6 @@ _mol2_types = {
     'CA':['C.3',0],
     'CB':['C.3',0],
     'OG':['O.3',0],
-    'C':['C.2',0],
-    'O':['O.2',0],
-    },
-    'SP1': # phosphoserine in charmm36
-    {
-    'N':['N.am',0],
-    'CA':['C.3',0],
-    'CB':['C.3',0],
-    'OG':['O.3',0],
-    'PD':['P.3',0],
-    'OE1':['O.2',0],
-    'OE2':['O.3',0],
-    'OE':['O.3',0],
-    'C':['C.2',0],
-    'O':['O.2',0],
-    },
-    'SP2': # phosphoserine in charmm36
-    {
-    'N':['N.am',0],
-    'CA':['C.3',0],
-    'CB':['C.3',0],
-    'OG':['O.3',0],
-    'PD':['P.3',0],
-    'OE1':['O.2',0],
-    'OE2':['O.3',0],
-    'OE':['O.3',0],
     'C':['C.2',0],
     'O':['O.2',0],
     },

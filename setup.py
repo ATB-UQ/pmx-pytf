@@ -42,17 +42,9 @@ class install_data_files(install_data):
 
 pmx = Extension('pmx/_pmx',
                    libraries = ['m'],
-                   include_dirs = ['src/pmx'],
-                   sources = ['src/pmx/Geometry.c','src/pmx/wrap_Geometry.c',
-                              'src/pmx/init.c', 'src/pmx/Energy.c']
-                   
-                 )
-
-xdrio = Extension('pmx/_xdrio',
-                   libraries = ['m'],
-                   include_dirs = ['src/xdr'],
-                   sources = ['src/xdr/xdrfile.c','src/xdr/xdrfile_trr.c',
-                              'src/xdr/xdrfile_xtc.c']
+                   include_dirs = ['src'],
+                   sources = ['src/Geometry.c','src/wrap_Geometry.c',
+                              'src/init.c', 'src/Energy.c']
                    
                  )
 
@@ -66,22 +58,14 @@ xdrio = Extension('pmx/_xdrio',
 
 
 setup (name = 'pmx',
-       version = '1.1.0dev',
+       version = '1.0.0',
        description = 'Python Toolbox structure file editing and writing simulation setup/analysis tools',
        author = 'Daniel Seeliger',
        author_email = 'seeliger.biosoft@gmail.de',
-       url = 'https://github.com/dseeliger/pmx/',
+       url = 'http://code.google.com/p/pmx/',
        long_description = '''Tools to play with structure files, topologies, index files, xtc files, etc....''',
        packages = ['pmx'],
-       data_files = [('pmx/data',['data/bbdep.pkl']),
-                     ('pmx/data',['data/bp.pkl']),
-                     #('pmx/data',['data/fragments.pkl']),
-                     ('pmx/data',['data/ffamber99sb.rtp']),
-                     ('pmx/data',['data/ffamber99sbbon.itp']),
-                     ('pmx/data',['data/ffamber99sbnb.itp']),
-                     ('pmx/data',['data/blosum62_new.mat'])
-                     ],
-       ext_modules = [pmx,xdrio],
+       ext_modules = [pmx],
        cmdclass = {'install_data': install_data_files
                    },
 

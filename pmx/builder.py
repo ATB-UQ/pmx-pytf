@@ -45,11 +45,11 @@ Usage:
     
 """
 import sys, os
-from library import pmx_data_file
-from geometry import *
-from chain import *
-from atom import Atom
-from model import Model
+from .library import pmx_data_file
+from .geometry import *
+from .chain import *
+from .atom import Atom
+from .model import Model
 
 
 def cross(x,y):
@@ -62,17 +62,13 @@ def cross(x,y):
 
 
     
-def add_bp(m, strand = None, bRNA=False):
+def add_bp(m, strand = None):
     if strand:
         N = len(strand)/2 
-	if bRNA:
-	    N = len(strand)
     else:
         N = 1
 #    print N, len(strand)
     r = Rotation([0,0,0],[0,0,1])
-    phi = 0.0
-#    if not bRNA:
     phi = N*36*pi/180.
     for atom in m.atoms:
         atom.x = r.apply(atom.x, phi)
@@ -80,24 +76,24 @@ def add_bp(m, strand = None, bRNA=False):
         atom.x[2]+=N*3.4
 
 def make_3ter(r):
-    # we add a proton at O3'
+    # we add a proton at O5'
+
     c3, o3 = r.fetchm(['C3\'', 'O3\''])
     v = array(o3.x)-array(c3.x)
     normed = v*1./linalg.norm(v)
-    newpos = array(o3.x) + normed#*.1
+    newpos = array(o3.x) + normed*.1
     a = Atom(name='H3T', x = newpos)
     r.append(a)
 
 def make_5ter(r):
     del r['O1P']
     del r['O2P']
-    # we add a proton at O5'
     a = r.fetch_atoms('P')[0]
     a.name = 'H5T'
     h5t, o5 = r.fetchm(['H5T', 'O5\''])
     v = array(h5t.x)-array(o5.x)
     normed = v*1./linalg.norm(v)
-    newpos = array(o5.x) + normed#*.1
+    newpos = array(o5.x) + normed*.1
     h5t.x = newpos
 
 
@@ -145,43 +141,11 @@ def build_dna_strand(seq):
         make_3ter(r)
     return mm
 
-def build_rna_strand(seq):
-
-    dic = pmx_data_file('rna.pkl')
-
-    seq = seq.lower()
-    ss = []
-    for x in seq:
-        ss.append(x)
-    new = []
-    new.extend(dic[ss[0]].residues)
-    ss.pop(0)
-    while ss:
-        newbp = ss.pop(0)
-        newm = dic[newbp].copy()
-        add_bp(newm, new, True)
-        new.extend(newm.residues)
-    chA = []
-    a = 1
-    for r in new:
-        r.set_resid(a)
-        a+=1
-        chA.append(r)
-    mm = Model(residues=chA)
-    mm.chains[0].set_chain_id('A')
-    for chain in mm.chains:
-        r = chain.residues[0]
-        r.set_resname(r.resname+'5')
-        make_5ter(r)
-        r = chain.residues[-1]
-        r.set_resname(r.resname+'3')
-        make_3ter(r)
-    return mm
 
 def get_fragments():
     dic = pmx_data_file('fragments.pkl')
-    n = len(dic.keys())
-    print >>sys.stderr,"pmx__> # Fragments loaded: %d" % n
+    n = len(list(dic.keys()))
+    print("pmx__> # Fragments loaded: %d" % n, file=sys.stderr)
     return dic
 
 
@@ -207,14 +171,14 @@ def write_pdb_with_connect(mol, f, n = 1):
         fp = open(f,"w")
     else:
         fp = f
-    print >>fp, "MODEL%5d" % n
+    print("MODEL%5d" % n, file=fp)
     for atom in mol.atoms:
-        print  >>fp, atom
+        print(atom, file=fp)
     for atom in mol.atoms:
         s= "CONECT%5d" % atom.id
         for a in atom.bonds:
             s+='%5d' % a.id
-        print >>fp, s
+        print(s, file=fp)
 
 
 def attach_group(atom, mol):
@@ -264,8 +228,8 @@ def make_residue(key,hydrogens = True):
     """ returns a molecule object with
     default geometry"""
 
-    if not library._aacids.has_key(key):
-        raise KeyError, "Residue %s not known" % key
+    if key not in library._aacids:
+        raise KeyError("Residue %s not known" % key)
     m = Molecule()
     m.unity = 'A'
     m.resname = key
@@ -307,10 +271,8 @@ def build_chain(sequence,dihedrals = None, \
 
 
     rl = []
-    try:
-        start = make_residue(library._aacids_dic[sequence[0]],hydrogens = hydrogens)
-    except:
-        start = make_residue(library._aacids_ext_amber[sequence[0]],hydrogens = hydrogens)
+    start = make_residue(library._aacids_dic[sequence[0]],\
+                                 hydrogens = hydrogens)
     start.set_resid(1)
     set_psi(start,dihedrals[0][1])
     rl.append(start)
@@ -342,7 +304,7 @@ def set_phi(mol1,mol2,phi):
     # select c, n, ca, c
     C = mol1.fetchm(['C'])[0]
     N,CA,C2 = mol2.fetchm(['N','CA','C'])
-    dih = C.dihedral(N,CA,C2) #- pi
+    dih = C.dihedral(N,CA,C2) - pi
     phi = pi/180*phi
     delta = phi-dih
 
@@ -358,7 +320,7 @@ def set_psi(mol,phi):
 
     # select n, c, ca, o
     N, CA, C, O = mol.fetchm(['N','CA','C','O'])
-    dih = N.dihedral(CA,C,O) #- pi
+    dih = N.dihedral(CA,C,O) - pi
     phi = pi/180*phi  - pi # psi is defined with N'
     delta = phi - dih
     r = Rotation(CA.x,C.x)
@@ -372,7 +334,7 @@ def set_omega(mol1,mol2,phi):
     # select c, n, ca, c
     CA,C = mol1.fetchm(['CA','C'])
     N,CA2,C2 = mol2.fetchm(['N','CA','C'])
-    dih = CA.dihedral(C,N,CA2) #-pi
+    dih = CA.dihedral(C,N,CA2) -pi
     phi = pi/180*phi
     delta = phi-dih
 

@@ -49,9 +49,10 @@ Basic Usage:
      .
      
 """
-from atomselection import *
-from molecule import *
-import copy, library
+from .atomselection import *
+from .molecule import *
+import copy
+import pmx.library
 #import builder
 
 class Chain(Atomselection):
@@ -63,7 +64,7 @@ class Chain(Atomselection):
         self.model = None
         self.nres = 0
         self.id = ''
-        for key, val in kwargs.items():
+        for key, val in list(kwargs.items()):
             setattr(self,key,val)
         if self.residues:
             self.al_from_resl()
@@ -108,18 +109,16 @@ class Chain(Atomselection):
                 self.atoms.append(atom)
                 atom.chain = self
                 
-    def insert_residue(self,pos,mol,newResNum=False):
+    def insert_residue(self,pos,mol):
         if self.model is not None:
             have_model = True
         else:
             have_model = False
-        if pos not in range(len(self.residues)+1):
-            raise ValueError, 'Chain has only %d residues' % \
-                  len(self.residues)
+        if pos not in list(range(len(self.residues)+1)):
+            raise ValueError('Chain has only %d residues' % \
+                  len(self.residues))
         else:
             mol.set_resid(-999)
-	    if newResNum != False:
-		mol.set_resid(newResNum)
             mol.set_chain_id(self.id)
             mol.chain = self
             if pos == len(self.residues):
@@ -134,8 +133,7 @@ class Chain(Atomselection):
             if have_model:
                 self.model.residues.insert(idx_model,mol)
                 self.residues.insert(pos,mol)
-		if newResNum==False:
-                    self.model.renumber_residues()
+                self.model.renumber_residues()
                 self.model.al_from_resl()
                 self.model.renumber_atoms()
                 self.al_from_resl()
@@ -145,8 +143,7 @@ class Chain(Atomselection):
                     self.residues.append(mol)
                 else:
                     self.residues.insert(pos,mol)
-		if newResNum==False:
-                    self.renumber_residues()
+                self.renumber_residues()
                 self.al_from_resl()
                 self.renumber_atoms()
         self.make_residue_tree()
@@ -166,9 +163,9 @@ class Chain(Atomselection):
             resl = chain.residues
         else:
             resl = chain
-        if pos not in range(len(self.residues)+1):
-            raise ValueError, 'Chain has only %d residues' % \
-                  len(self.residues)
+        if pos not in list(range(len(self.residues)+1)):
+            raise ValueError('Chain has only %d residues' % \
+                  len(self.residues))
         if pos == len(self.residues):
             m = self.residues[-1]
             if have_model:
@@ -203,7 +200,7 @@ class Chain(Atomselection):
             self.renumber_residues()
         self.make_residue_tree()
 
-    def remove_residue(self,residue,bKeepResNum=False):
+    def remove_residue(self,residue):
         idx = self.residues.index(residue)
         try:
             midx = self.model.residues.index(residue)
@@ -222,17 +219,13 @@ class Chain(Atomselection):
                 self.atoms.append(atom)
         if midx!=-1:
             self.model.renumber_atoms()
-	    if bKeepResNum==False:
-                self.model.renumber_residues()
+            self.model.renumber_residues()
         self.make_residue_tree()
         
-    def replace_residue(self,residue, new, bKeepResNum=False):
+    def replace_residue(self,residue, new):
         idx = self.residues.index(residue)
-	if bKeepResNum==True:
-            self.insert_residue(idx,new,residue.id)
-	else:
-	    self.insert_residue(idx,new)
-        self.remove_residue(residue,bKeepResNum)
+        self.insert_residue(idx,new)
+        self.remove_residue(residue)
 
     def remove_atom(self,atom):
         m = atom.molecule
@@ -264,7 +257,7 @@ class Chain(Atomselection):
 
     def append(self,mol):
         if not isinstance(mol,Molecule):
-            raise TypeError, "%s is not a Molecule instance" % str(mol)
+            raise TypeError("%s is not a Molecule instance" % str(mol))
         else:
             n = len(self.residues)
             self.insert_residue(n,mol)
@@ -284,8 +277,8 @@ class Chain(Atomselection):
             if self.unity=='A':
                 d*=.1
             if d > 0.45:
-                print 'Warning: Long Bond %d-%s <-> %d-%s' %\
-                      (r.id,r.resname,r2.id,r2.resname)
+                print('Warning: Long Bond %d-%s <-> %d-%s' %\
+                      (r.id,r.resname,r2.id,r2.resname))
             else:
                 c.bonds.append(n)
                 n.bonds.append(c)
@@ -407,7 +400,7 @@ class Chain(Atomselection):
     def __prepare_cterm_for_extension(self):
         cterm = self.cterminus()
         if  cterm.resname not in library._protein_residues:
-            print " Cannot attach to this residue! ", cterm.resname
+            print(" Cannot attach to this residue! ", cterm.resname)
             sys.exit(1)
         a = cterm.fetch_atoms('OXT')
         if a:
@@ -813,7 +806,7 @@ class Chain(Atomselection):
                         r.next = next_res
                         next_res.previous = r
                     else:
-                        print >>sys.stderr, 'Gap between residues ', r, '< - >', next_res, 'dist = ', d
+                        print('Gap between residues ', r, '< - >', next_res, 'dist = ', d, file=sys.stderr)
                         self.residue_tree_ok = False
                             
     def cterminus(self):

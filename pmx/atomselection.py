@@ -37,11 +37,11 @@ Take a look there for details...
 import sys
 from numpy import *
 import random
-from atom import *
-from geometry import Rotation
-import library
+from .atom import *
+from .geometry import Rotation
+from . import library
 import copy as cp
-import _pmx
+import pmx._pmx
 #import _gridns
 
 XX = 0
@@ -56,14 +56,12 @@ class Atomselection:
     def __init__(self, **kwargs):
         self.atoms = []
         self.unity = 'A'
-        for key, val in kwargs.items():
+        for key, val in list(kwargs.items()):
             setattr(self,key,val)
 
-    def writePDB(self,fname,title="",nr=1,bPDBTER=False,bAssignChainIDs=False,resnrlist=[]):
-	if nr > 1:
-	    fp = open(fname,'a')
-	else:
-            fp = open(fname,'w')
+    def writePDB(self,fname,title="",nr=1, write_by_residue=False):
+
+        fp = open(fname,'w')
         if not title:
             if hasattr(self,"title"):
                 title = self.title
@@ -71,37 +69,39 @@ class Atomselection:
                 title = str(self.__class__)+' '+str(self)
 
         header = 'TITLE    '+title
-        print >>fp, header
-        print >>fp, 'MODEL%5d' % nr
+        print(header, file=fp)
+        print('MODEL%5d' % nr, file=fp)
         if not hasattr(self,"box"):
             self.box = [ [0,0,0], [0,0,0], [0,0,0] ]
         if self.box[XX][XX]*self.box[YY][YY]*self.box[ZZ][ZZ] != 0:
             box_line = _pmx.box_as_cryst1( self.box )
-            print >>fp, box_line
-
-	chainID = self.atoms[0].chain_id
-        for atom in self.atoms:
-	    if (bPDBTER==True) and (atom.chain_id != chainID):
-		print >>fp, 'TER'
-		chainID = atom.chain_id
-	    if (len(resnrlist)>0) and (atom.resnr not in resnrlist):
-		continue
-	    if atom.chain_id.startswith('pmx'):
-                if bAssignChainIDs==False:
-		    atom.chain_id = ""
+            print(box_line, file=fp)
+        if not write_by_residue:
+            for atom in self.atoms:
+                if( len(atom.name) > 4): # too long atom name
+                    foo = cp.deepcopy(atom)
+                    foo.name = foo.name[:4]
+                    print(foo, file=fp)
                 else:
-                    atom.chain_id = atom.chain_id#[-1]
-            if( len(atom.name) > 4): # too long atom name
-                foo = cp.deepcopy(atom)
-                foo.name = foo.name[:4]
-                print >>fp, foo
-            else:
-                print >>fp, atom
-        print >>fp, 'ENDMDL'
+                    print(atom, file=fp)
+        else:
+            residue_id, atom_id = 0, 0
+            for residue in self.residues:
+                residue_id = (residue_id + 1) % 100000
+                for atom in residue.atoms:
+                    atom_id = (atom_id + 1) % 100000
+                    atom.resnr, atom.id = residue_id, atom_id
+                    if( len(atom.name) > 4): # too long atom name
+                        foo = cp.deepcopy(atom)
+                        foo.name = foo.name[:4]
+                        print(foo, file=fp)
+                    else:
+                        print(atom, file=fp)
+        print('ENDMDL', file=fp)
         fp.close()
 
 
-    def writeGRO( self, filename, title = ''):
+    def writeGRO( self, filename, title = '', write_by_residue=False):
         fp = open(filename,'w')
         if self.unity == 'nm': fac = 1.
         else: fac = 0.1
@@ -110,24 +110,30 @@ class Atomselection:
                 title = self.title
             else:
                 title = str(self.__class__)+' '+str(self)
-        print >>fp, title
-        print >>fp, "%5d" % len(self.atoms)
-        if self.atoms[0].v[0] != 0.000 : bVel = True
-        else: bVel = False
-        if bVel:
-            gro_format = "%8.3f%8.3f%8.3f%8.4f%8.4f%8.4f"
+        print(title, file=fp)
+        if not write_by_residue:
+          print("%5d" % len(self.atoms), file=fp)
         else:
-            gro_format = "%8.3f%8.3f%8.3f"
-        for atom in self.atoms:
-            resid = (atom.resnr)%100000
-            at_id = (atom.id)%100000
-            ff = "%5d%-5.5s%5.5s%5d" % (resid, atom.resname, atom.name, at_id)
-            if bVel:
+          print("%5d" % sum([len(residue.atoms) for residue in self.residues]), file=fp)
+        gro_format = "%8.3f%8.3f%8.3f%8.4f%8.4f%8.4f"
+        if not write_by_residue:
+            for atom in self.atoms:
+                resid = (atom.resnr)%100000
+                at_id = (atom.id)%100000
+                ff = "%5d%-5.5s%5.5s%5d" % (resid, atom.resname, atom.name, at_id)
                 ff+=gro_format % (atom.x[XX]*fac, atom.x[YY]*fac, atom.x[ZZ]*fac,
-                                  atom.v[XX], atom.v[YY], atom.v[ZZ])
-            else:
-                ff+=gro_format % (atom.x[XX]*fac, atom.x[YY]*fac, atom.x[ZZ]*fac )
-            print >>fp, ff
+                                      atom.v[XX], atom.v[YY], atom.v[ZZ])
+                print(ff, file=fp)
+        else:
+            residue_id, atom_id = 0, 0
+            for residue in self.residues:
+                residue_id = (residue_id + 1) % 100000
+                for atom in residue.atoms:
+                    atom_id = (atom_id + 1) % 100000
+                    ff = "%5d%-5.5s%5.5s%5d" % (residue_id, atom.resname, atom.name, atom_id)
+                    ff+=gro_format % (atom.x[XX]*fac, atom.x[YY]*fac, atom.x[ZZ]*fac,
+                                          atom.v[XX], atom.v[YY], atom.v[ZZ])
+                    print(ff, file=fp)
 
         if not hasattr(self,"box"):
             self.box = [ [0,0,0], [0,0,0], [0,0,0] ]
@@ -139,11 +145,11 @@ class Atomselection:
             bTric = True
             ff = "%10.5f%10.5f%10.5f"
         if bTric:
-            print >>fp, ff % (self.box[XX][XX],self.box[YY][YY],self.box[ZZ][ZZ])
+            print(ff % (self.box[XX][XX]*fac, self.box[YY][YY]*fac, self.box[ZZ][ZZ]*fac), file=fp)
         else:
-            print >>fp, ff % (self.box[XX][XX],self.box[YY][YY],self.box[ZZ][ZZ],
-                              self.box[XX][YY],self.box[XX][ZZ],self.box[YY][XX],
-                              self.box[YY][ZZ],self.box[ZZ][XX],self.box[ZZ][YY])
+            print(ff % (self.box[XX][XX]*fac, self.box[YY][YY]*fac, self.box[ZZ][ZZ]*fac,
+                              self.box[XX][YY]*fac, self.box[XX][ZZ]*fac, self.box[YY][XX]*fac,
+                              self.box[YY][ZZ]*fac, self.box[ZZ][XX]*fac, self.box[ZZ][YY]*fac), file=fp)
         fp.close()
 
     def write(self,fn, title = '', nr = 1):
@@ -153,7 +159,7 @@ class Atomselection:
         elif ext == 'gro':
             self.writeGRO( fn, title )
         else:
-            print >>sys.stderr, 'pmx_Error_> Can only write pdb or gro!'
+            print('pmx_Error_> Can only write pdb or gro!', file=sys.stderr)
             sys.exit(1)
 
 
@@ -162,12 +168,12 @@ class Atomselection:
         """move atoms to center of mass or return vector only"""
         for atom in self.atoms:
             if atom.m == 0:
-                print >>sys.stderr, " Warning: Atom has zero mass: setting mass to 1."
+                print(" Warning: Atom has zero mass: setting mass to 1.", file=sys.stderr)
                 atom.m = 1.
-        x = sum(map(lambda a: a.x[0]*a.m, self.atoms))
-        y = sum(map(lambda a: a.x[1]*a.m, self.atoms))
-        z = sum(map(lambda a: a.x[2]*a.m, self.atoms))
-        M = sum(map(lambda a: a.m, self.atoms))
+        x = sum([a.x[0]*a.m for a in self.atoms])
+        y = sum([a.x[1]*a.m for a in self.atoms])
+        z = sum([a.x[2]*a.m for a in self.atoms])
+        M = sum([a.m for a in self.atoms])
         x/=M
         y/=M
         z/=M
@@ -185,7 +191,7 @@ class Atomselection:
         """ return a list of atom objects
         found in topDic"""
         self.atoms=[]
-        for idx in topDic['atoms'].keys():
+        for idx in list(topDic['atoms'].keys()):
             at=Atom().atomFromTop(topDic,idx)
             self.atoms.append(at)
         return self
@@ -205,6 +211,12 @@ class Atomselection:
             atom.x[2]*=.1
             atom.unity = 'nm'
         self.unity = 'nm'
+
+        if hasattr(self, 'box'):
+            self.box = [
+                [x * 0.1 for x in v]
+                for v in self.box
+            ]
         
     def nm2a(self):
         if self.unity == 'A':
@@ -215,6 +227,12 @@ class Atomselection:
             atom.x[2]*=10.
             atom.unity = 'A'
         self.unity = 'A'
+
+        if hasattr(self, 'box'):
+            self.box = [
+                [x * 10. for x in v]
+                for v in self.box
+            ]
         
     def get_long_name(self):
         for atom in self.atoms:
@@ -230,9 +248,9 @@ class Atomselection:
 
 
     def max_crd(self):
-        x = map(lambda a: a.x[0], self.atoms)
-        y = map(lambda a: a.x[1], self.atoms)
-        z = map(lambda a: a.x[2], self.atoms)
+        x = [a.x[0] for a in self.atoms]
+        y = [a.x[1] for a in self.atoms]
+        z = [a.x[2] for a in self.atoms]
         return (min(x),max(x)),(min(y),max(y)),(min(z),max(z))
 
     def search_neighbors(self, cutoff = 8., build_bonds = True ):
@@ -245,7 +263,7 @@ class Atomselection:
     
 
     def coords(self):
-        return map(lambda a: a.x, self.atoms)
+        return [a.x for a in self.atoms]
 
 
     def fetch_atoms(self,key,how='byname',wildcard=False,inv=False):
@@ -343,7 +361,7 @@ class Atomselection:
                     newl.append((at1,at2,tp))
                     check = True
             if not check:
-                print 'bondtype %s-%s defaults to 1' % (at1.atype, at2.atype)
+                print('bondtype %s-%s defaults to 1' % (at1.atype, at2.atype))
                 newl.append((at1,at2,'1'))
         self.bondlist = newl
                                 

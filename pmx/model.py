@@ -68,13 +68,14 @@ Basic Usage:
     remove chain A
     >>> model.write(args['-o']) write new structure file
     """
-from atomselection import *
-import sys,copy,library
+from .atomselection import *
+import sys,copy
+import pmx.library
 #from chain import *
-import chain
-from molecule import *
-from atom import *
-import _pmx as _p
+from . import chain
+from .molecule import *
+from .atom import *
+import pmx._pmx as _p
 XX       =  0             
 YY       =  1             
 ZZ       =  2
@@ -83,7 +84,7 @@ ZZ       =  2
 class Model(Atomselection):
 
     def __init__(self, filename = None, pdbline = None, renumber_atoms=True,
-                 renumber_residues = True, bPDBTER= False, bNoNewID=True, **kwargs):
+                 renumber_residues = True, **kwargs):
         
         Atomselection.__init__(self)
         self.title = 'PMX MODEL'
@@ -96,11 +97,11 @@ class Model(Atomselection):
         self.have_bonds=0
         self.box = [ [0,0,0], [0,0,0], [0,0,0] ]
         self.unity = 'A'
-        for key, val in kwargs.items():
+        for key, val in list(kwargs.items()):
             setattr(self,key,val)
 
         if filename is not None:
-            self.read(filename,bPDBTER,bNoNewID)
+            self.read(filename)
         if pdbline is not None:
             self.__readPDB(pdbline = pdbline)
         if self.atoms:
@@ -117,7 +118,7 @@ class Model(Atomselection):
             self.make_chains()
             self.make_residues()
         if self.chdic and not self.chains:
-            for key, val in self.chdic.items():
+            for key, val in list(self.chdic.items()):
                 self.chains.append(val)
             if not self.atoms and not self.residues:
                 self.resl_from_chains()
@@ -126,8 +127,36 @@ class Model(Atomselection):
             self.renumber_atoms()
         if renumber_residues:
             self.renumber_residues()
-                
-            
+
+    def __add__(first_model, second_model):
+        new_model = Model()
+        for attribute in ('title', 'name', 'id', 'have_bonds', 'box', 'unity',):
+            # Get those attributes from first_model ONLY
+            setattr(
+                new_model,
+                attribute,
+                getattr(first_model, attribute),
+            )
+        for attribute in ('chains', 'residues', 'atoms',):
+            # Concatenate those list attributes
+            setattr(
+                new_model,
+                attribute,
+                (getattr(first_model, attribute) + getattr(second_model, attribute)),
+            )
+        for attribute in ('chdic',):
+            # Concatenate those dict attributes
+            setattr(
+                new_model,
+                attribute,
+                dict(list(getattr(first_model, attribute).items()) + list(getattr(second_model, attribute).items())),
+            )
+
+        new_model.renumber_atoms()
+        new_model.renumber_residues()
+
+        return new_model
+
     def __str__(self):
         s = '< Model: nchain = %d nres = %d natom = %d >' %\
             (len(self.chains), len(self.residues), len(self.atoms))
@@ -153,23 +182,23 @@ class Model(Atomselection):
     def writePIR( self, filename, title=""):
         fp = open(filename,"w")
         if not title: title = '_'.join(self.title.split())
-        print >>fp, '>P1;%s' % title
-        print >>fp, 'sequence:::::::::'
+        print('>P1;%s' % title, file=fp)
+        print('sequence:::::::::', file=fp)
         for i in range( len(self.chains) - 1):
-            print >>fp, self.chains[i].get_sequence()+'/'
-        print >>fp, self.chains[-1].get_sequence()+'*'
+            print(self.chains[i].get_sequence()+'/', file=fp)
+        print(self.chains[-1].get_sequence()+'*', file=fp)
         fp.close()
 
     def writeFASTA( self, filename, title = ""):
         fp = open(filename,"w")
         if not title: title = '_'.join(self.title.split())
         if len(self.chains) == 1:
-            print >>fp, '> %s' % title
-            print >>fp, self.chains[0].get_sequence()
+            print('> %s' % title, file=fp)
+            print(self.chains[0].get_sequence(), file=fp)
         else:
             for chain in self.chains:
-                print >>fp, '> %s_chain_%s' % (title, chain.id )
-                print >>fp, chain.get_sequence()
+                print('> %s_chain_%s' % (title, chain.id ), file=fp)
+                print(chain.get_sequence(), file=fp)
                 
     
 
@@ -214,18 +243,18 @@ class Model(Atomselection):
 ##         fp.close()
 
 
-    def write(self,fn, title = '', nr = 1, bPDBTER=False, bAssignChainIDs=False):
+    def write(self,fn, title = '', nr = 1, write_by_residue=False):
         ext = fn.split('.')[-1]
         if ext == 'pdb':
-            self.writePDB( fn, title, nr, bPDBTER, bAssignChainIDs )
+            self.writePDB( fn, title, nr, write_by_residue=write_by_residue)
         elif ext == 'gro':
-            self.writeGRO( fn, title )
+            self.writeGRO( fn, title, write_by_residue=write_by_residue)
         elif ext == 'pir':
             self.writePIR( fn, title )
         elif ext == 'fasta':
             self.writeFASTA( fn, title )
         else:
-            print >>sys.stderr, 'pmx_Error_> Can only write pdb or gro!'
+            print('pmx_Error_> Can only write pdb or gro!', file=sys.stderr)
             sys.exit(1)
 
 
@@ -315,81 +344,27 @@ class Model(Atomselection):
         if pdbline:
             l = pdbline.split('\n')
         else:
-            l = open(fname,'r').readlines()
+            with open(fname,'r') as fh:
+                l = fh.readlines()
         for line in l:
             if line[:4]=='ATOM' or \
                line[:6]=='HETATM':
                 a = Atom().readPDBString(line)
                 self.atoms.append(a)
             if line[:6] == 'CRYST1':
-                self.box = _p.box_from_cryst1( line )
+                self.box = [
+                    [x * 10. for x in v]
+                    for v in _p.box_from_cryst1(line)
+                ]
         self.make_chains()
         self.make_residues()
-        self.unity  = 'A'
+        self.unity = 'A'
         return self
     
-    def __readPDBTER(self,fname=None, pdbline=None, bNoNewID=True):
-        if pdbline:
-            l = pdbline.split('\n')
-        else:
-            l = open(fname,'r').readlines()
-
- 	chainIDstring = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnoprstuvwxyz123456789'
-	bNewChain = True
-	chainID = ' '
-	prevID = ' '
-        prevAtomName = ' '
-        prevResID = 0
-        usedChainIDs = ''
-        atomcount = 1
-        for line in l:
-	    if 'TER' in line:
-		bNewChain = True
-            if (line[:4]=='ATOM') or (line[:6]=='HETATM'):
-                a = Atom().readPDBString(line,origID=atomcount)
-                atomcount+=1
-#		if (a.chain_id != prevID) and (a.chain_id != ' '): # identify chain change by ID (when no TER is there)
-		if (a.chain_id != prevID): # identify chain change by ID (when no TER is there)
-		    bNewChain = True
-                if (a.resnr != prevResID):
-                    try:
-                        if a.resnr != prevResID+1:
-		            bNewChain = True
-                        if (prevAtomName == 'OC2') or (prevAtomName == 'OXT') or (prevAtomName == 'OT2'):
-                            bNewChain = True
-                    except TypeError:
-                        bNewChain = False
-		prevID = a.chain_id
-                prevResID = a.resnr
-                prevAtomName = a.name
-		if bNewChain==True:
-		    if (a.chain_id==' ') or (a.chain_id==chainID) or (a.chain_id in usedChainIDs):
-			# find a new chain id
-			bFound = False
-			while bFound==False:
-			    foo = chainIDstring[0]
-			    chainIDstring = chainIDstring.lstrip(chainIDstring[0])
-			    if foo not in usedChainIDs:
-				bFound=True
-				usedChainIDs = usedChainIDs+foo
-				chainID = foo
-				if bNoNewID==True:
-				    chainID = "pmx"+foo
-		    else:
-			chainID = a.chain_id
-			usedChainIDs = usedChainIDs + chainID
-		a.chain_id = chainID
-                self.atoms.append(a)
-		bNewChain = False
-            if line[:6] == 'CRYST1':
-                self.box = _p.box_from_cryst1( line )
-        self.make_chains()
-        self.make_residues()
-        self.unity  = 'A'
-        return self
-
+    
     def __readGRO(self, filename):
-        l = open(filename).readlines()
+        with open(filename) as fh:
+            l = fh.readlines()
         # first line is name/comment
         name = l[0].rstrip()
         self.title = name
@@ -404,18 +379,16 @@ class Model(Atomselection):
             name = line[10:15].strip()
             idx = int(line[15:20])
             rest = line[20:].split()
-            assert len(rest) in [3,6]
-            x = float(rest[0])
-            y = float(rest[1])
-            z = float(rest[2])
-            coords = [x,y,z]
-            if len(rest) == 6:
-                vx = float(rest[3])
-                vy = float(rest[4])
-                vz = float(rest[5])
-                vel = [vx,vy,vz]
+            if len(rest) in [3, 6]:
+                try:
+                    coords, vel = self.parse_x_v(rest)
+                except:
+                    # fall back to fixed-width based parsing format
+                    coords, vel = self.problematic_grofile_parsing(line)
             else:
-                vel = [0,0,0]
+                # fall back to fixed-width based parsing format
+                coords, vel = self.problematic_grofile_parsing(line)
+
             a = Atom( id =idx, name = name, resname = resname,
                       resnr = resid, x = coords, v = vel, unity = 'nm')
             a.get_symbol()
@@ -447,17 +420,95 @@ class Model(Atomselection):
         self.unity = 'nm'
         return self
 
-    def read(self, filename, bPDBTER=False, bNoNewID=True ):
+    def parse_x_v(self, x_v):
+        x = float(x_v[0])
+        y = float(x_v[1])
+        z = float(x_v[2])
+        coords = [x, y, z]
+        if len(x_v) == 6:
+            vx = float(x_v[3])
+            vy = float(x_v[4])
+            vz = float(x_v[5])
+            vel = [vx, vy, vz]
+        else:
+            vel = [0, 0, 0]
+        return coords, vel
+
+    def problematic_grofile_parsing(self, line):
+        # First attempt to split columns on - character
+        x_y_cols = line[20:].replace("-", " -").split()
+        # Use .4f formatting to extract columns
+        split_x_y_cols = []
+        for col in x_y_cols:
+            if col.count(".") < 2:
+                split_x_y_cols.append(col)
+            else:
+                column_delimiter_indexes = [0] + [i + 4 for i, c in enumerate(col) if c == "."]
+                for j in range(len(column_delimiter_indexes)-1):
+                    split_x_y_cols.append(col[column_delimiter_indexes[j]:column_delimiter_indexes[j+1]])
+        assert len(split_x_y_cols) in [3, 6], split_x_y_cols
+        coords, vel = self.parse_x_v(split_x_y_cols)
+        print(f"WARNING: unexpected column format in GRO file: {line} (coords={coords}, vel={vel})")
+        return coords, vel
+
+    def updateGRO(self, filename):
+        l = open(filename).readlines()
+        # first line is name/comment
+        name = l[0].rstrip()
+        self.title = name
+        # next line is number of atoms
+        natoms = int(l[1])
+        atoms_parsed = 0
+        al = []
+        while atoms_parsed != natoms:
+            line = l[atoms_parsed+2]
+            rest = line[20:].split()
+            assert len(rest) in [3,6]
+            x = float(rest[0])
+            y = float(rest[1])
+            z = float(rest[2])
+            coords = [x,y,z]
+            if len(rest) == 6:
+                vx = float(rest[3])
+                vy = float(rest[4])
+                vz = float(rest[5])
+                vel = [vx,vy,vz]
+            else:
+                vel = [0,0,0]
+            self.atoms[atoms_parsed].x = coords
+            self.atoms[atoms_parsed].v = vel
+            atoms_parsed += 1
+        box_line = [float(x) for x in l[-1].split()]
+        assert len(box_line) in [3,9]
+        box = [ [0,0,0], [0,0,0], [0,0,0] ]
+        box[XX][XX] = box_line[0]
+        box[YY][YY] = box_line[1]
+        box[ZZ][ZZ] = box_line[2]
+        if len(box_line) == 3:
+            box[XX][YY] = 0
+            box[XX][ZZ] = 0
+            box[YY][XX] = 0
+            box[YY][ZZ] = 0
+            box[ZZ][XX] = 0
+            box[ZZ][YY] = 0
+        else:
+            box[XX][YY] = box_line[3]
+            box[XX][ZZ] = box_line[4]
+            box[YY][XX] = box_line[5]
+            box[YY][ZZ] = box_line[6]
+            box[ZZ][XX] = box_line[7]
+            box[ZZ][YY] = box_line[8]
+        self.box = box
+        return
+
+    def read(self, filename ):
         ext = filename.split('.')[-1]
         if ext == 'pdb':
-	    if bPDBTER:
-                return self.__readPDBTER( filename, None, bNoNewID )
-	    else:
-                return self.__readPDB( filename )
+            return self.__readPDB( filename )
         elif ext == 'gro':
             return self.__readGRO( filename )
         else:
-            print >>sys.stderr, 'ERROR: Can only read pdb or gro!'
+            print('ERROR: Can only read pdb or gro!', file=sys.stderr)
             sys.exit(1)
 
     def renumber_residues(self):
@@ -475,9 +526,9 @@ class Model(Atomselection):
         ch.remove_residue(residue)
 
     def remove_chain(self,key):
-        if not self.chdic.has_key(key):
-            print 'No chain %s to remove....' % key
-            print 'No changes applied.'
+        if key not in self.chdic:
+            print('No chain %s to remove....' % key)
+            print('No changes applied.')
             return
         for ch in self.chains:
             if ch.id == key:
@@ -503,14 +554,14 @@ class Model(Atomselection):
         ch = self.chdic[chain_id]
         ch.insert_residue(pos,res)
 
-    def replace_residue(self,residue,new,bKeepResNum=False):
+    def replace_residue(self,residue,new):
         ch = residue.chain
-        ch.replace_residue(residue,new,bKeepResNum)
+        ch.replace_residue(residue,new)
         
     def insert_chain(self,pos,new_chain):
-        if self.chdic.has_key(new_chain.id):
-            print 'Chain identifier %s already in use!' % new_chain.id
-            print 'Changing chain identifier to 0'
+        if new_chain.id in self.chdic:
+            print('Chain identifier %s already in use!' % new_chain.id)
+            print('Changing chain identifier to 0')
             new_chain.set_chain_id('0')
         self.chains.insert(pos,new_chain)
         self.resl_from_chains()
@@ -541,11 +592,6 @@ class Model(Atomselection):
                     result.append(r)
         return result
     
-    def fetch_residues_by_ID(self, ind):
-        for r in self.residues:
-            if r.id == ind:
-                return r
-        return False
 
     def al_from_resl(self):
         self.atoms = []
@@ -637,7 +683,7 @@ class Model(Atomselection):
         nter = []
         for ch in model.chains:
             first = ch.residues[0]      # first residue
-            if first.resname in library._one_letter.keys():
+            if first.resname in list(library._one_letter.keys()):
                 nter.append(first)
         return nter
 
@@ -645,7 +691,7 @@ class Model(Atomselection):
         cter = []
         for ch in model.chains:
             last = ch.residues[-1]      # last residue
-            if last.resname in library._one_letter.keys():
+            if last.resname in list(library._one_letter.keys()):
                 cter.append(last)
         return last
 
