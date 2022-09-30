@@ -1,6 +1,6 @@
 *.[oa]
 *~
-*.pyc
-build.sh
-.localhistory
-build
+build/*
+dist/*
+*.egg-info
+__pycache__
