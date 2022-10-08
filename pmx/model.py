@@ -452,7 +452,8 @@ class Model(Atomselection):
         return coords, vel
 
     def updateGRO(self, filename):
-        l = open(filename).readlines()
+        with open(filename) as fh:
+            l = fh.readlines()
         # first line is name/comment
         name = l[0].rstrip()
         self.title = name
@@ -463,18 +464,15 @@ class Model(Atomselection):
         while atoms_parsed != natoms:
             line = l[atoms_parsed+2]
             rest = line[20:].split()
-            assert len(rest) in [3,6]
-            x = float(rest[0])
-            y = float(rest[1])
-            z = float(rest[2])
-            coords = [x,y,z]
-            if len(rest) == 6:
-                vx = float(rest[3])
-                vy = float(rest[4])
-                vz = float(rest[5])
-                vel = [vx,vy,vz]
+            if len(rest) in [3, 6]:
+                try:
+                    coords, vel = self.parse_x_v(rest)
+                except:
+                    # use .4f based parsing
+                    coords, vel = self.problematic_grofile_parsing(line)
             else:
-                vel = [0,0,0]
+                # use .4f based parsing
+                coords, vel = self.problematic_grofile_parsing(line)
             self.atoms[atoms_parsed].x = coords
             self.atoms[atoms_parsed].v = vel
             atoms_parsed += 1
