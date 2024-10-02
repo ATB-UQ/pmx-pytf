@@ -58,7 +58,7 @@ pmx = Extension('pmx/_pmx',
 
 
 setup (name = 'pmx',
-       version = '1.0.1',
+       version = '1.0.2',
        description = 'Python Toolbox structure file editing and writing simulation setup/analysis tools',
        author = 'Martin Stroet, Daniel Seeliger',
        author_email = 'm.stroet@uq.edu.au',
