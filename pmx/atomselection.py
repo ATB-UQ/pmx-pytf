@@ -166,17 +166,16 @@ class Atomselection:
             
     def com(self,vector_only=False):
         """move atoms to center of mass or return vector only"""
-        for atom in self.atoms:
-            if atom.m == 0:
-                print(" Warning: Atom has zero mass: setting mass to 1.", file=sys.stderr)
-                atom.m = 1.
-        x = sum([a.x[0]*a.m for a in self.atoms])
-        y = sum([a.x[1]*a.m for a in self.atoms])
-        z = sum([a.x[2]*a.m for a in self.atoms])
         M = sum([a.m for a in self.atoms])
-        x/=M
-        y/=M
-        z/=M
+        if M == 0:
+            # Zero total mass, so treat all atoms as having equal mass
+            x = sum([a.x[0] for a in self.atoms])
+            y = sum([a.x[1] for a in self.atoms])
+            z = sum([a.x[2] for a in self.atoms])
+        else:
+            x = sum([a.x[0]*a.m for a in self.atoms]) / M
+            y = sum([a.x[1]*a.m for a in self.atoms]) / M
+            z = sum([a.x[2]*a.m for a in self.atoms]) / M
         if vector_only:
             return [x,y,z]
         else:
